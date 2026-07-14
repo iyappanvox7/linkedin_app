@@ -1,6 +1,6 @@
 // export const API_BASE_URL = 'http://127.0.0.1:8000';
 // export const API_BASE_URL = process.env.REACT_APP_API_URL || '';
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://linkedin-backend-17hv.onrender.com';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://linkedin-backend-0l6x.onrender.com';
 // 🟢 CLIENT_ID is removed. Backend uses the logged-in user's email from the cookie.
 
 export const KEYWORD_LIBRARY = {
