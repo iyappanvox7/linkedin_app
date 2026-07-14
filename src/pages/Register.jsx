@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/constants';
 
 export default function Register() {
   const [fullName, setFullName] = useState('');
@@ -13,7 +14,7 @@ export default function Register() {
     e.preventDefault();
     try {
       // 🟢 Call the registration API endpoint
-      await axios.post('http://127.0.0.1:8000/auth/register', {
+      await axios.post(`${API_BASE_URL}/auth/register`, {
         full_name: fullName,
         email: email,
         password: password

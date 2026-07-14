@@ -6,7 +6,7 @@ import ControlStrip from '../components/ControlStrip';
 import LeadsTable from '../components/LeadsTable';
 import UserPreferences from '../components/UserPreferences';
 import CustomKeywordsManager from '../components/CustomKeywordsManager';
-import { checkScrapingStatus } from '../api/client';
+import { checkScrapingStatus, api } from '../api/client';
 import { KEYWORD_LIBRARY } from '../config/constants';
 
 export default function Dashboard() {
@@ -70,7 +70,7 @@ export default function Dashboard() {
 
   const handleStopScanning = async () => {
     try {
-      await fetch('http://127.0.0.1:8000/stop-scanning', { method: 'POST' });
+      await api.post('/stop-scanning');
       if (window.activePollingTimerKey) clearInterval(window.activePollingTimerKey);
       if (window.activeBatchPollingTimerKey) {
         clearInterval(window.activeBatchPollingTimerKey);
