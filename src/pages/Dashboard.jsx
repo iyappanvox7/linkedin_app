@@ -22,6 +22,9 @@ export default function Dashboard() {
     disconnectAccount,
     loadLeads,
     checkConnectionStatus,
+    connectCredentials,
+    submitChallenge,
+    connectCookie,
   } = useLeads();
 
   const { logout, user } = useAuth();
@@ -37,6 +40,16 @@ export default function Dashboard() {
 
   const [showScrapingOverlay, setShowScrapingOverlay] = useState(false);
   const [checkingInterval, setCheckingInterval] = useState(null);
+
+  // ── Connection Modal States ──
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [connectTab, setConnectTab] = useState('credentials'); // 'credentials' | 'cookie'
+  const [connectEmail, setConnectEmail] = useState('');
+  const [connectPassword, setConnectPassword] = useState('');
+  const [connectCookieVal, setConnectCookieVal] = useState('');
+  const [connectStatus, setConnectStatus] = useState('idle'); // 'idle' | 'loading' | 'challenge' | 'success' | 'error'
+  const [connectError, setConnectError] = useState('');
+  const [connectCode, setConnectCode] = useState('');
 
   // ── 1. Check connection on mount and every 60 seconds ──
   useEffect(() => {
@@ -82,6 +95,77 @@ export default function Dashboard() {
       }
     }
   }, [user]);
+
+  const handleConnectCredentials = async (e) => {
+    e.preventDefault();
+    if (!connectEmail.trim() || !connectPassword.trim()) {
+      setConnectError('Email and Password are required.');
+      return;
+    }
+    setConnectStatus('loading');
+    setConnectError('');
+    try {
+      const data = await connectCredentials({ username: connectEmail, password: connectPassword });
+      if (data.status === 'success') {
+        setConnectStatus('success');
+        checkConnectionStatus();
+      } else if (data.status === 'challenge_required') {
+        setConnectStatus('challenge');
+      } else {
+        setConnectStatus('error');
+        setConnectError(data.message || 'Authentication failed.');
+      }
+    } catch (err) {
+      setConnectStatus('error');
+      setConnectError('Failed to communicate with authentication gateway.');
+    }
+  };
+
+  const handleConnectChallenge = async (e) => {
+    e.preventDefault();
+    if (!connectCode.trim() || connectCode.trim().length !== 6) {
+      setConnectError('Please enter a valid 6-digit verification code.');
+      return;
+    }
+    setConnectStatus('loading');
+    setConnectError('');
+    try {
+      const data = await submitChallenge({ code: connectCode });
+      if (data.status === 'success') {
+        setConnectStatus('success');
+        checkConnectionStatus();
+      } else {
+        setConnectStatus('challenge');
+        setConnectError(data.message || 'Verification failed. Try again.');
+      }
+    } catch (err) {
+      setConnectStatus('challenge');
+      setConnectError('Failed to verify challenge code.');
+    }
+  };
+
+  const handleConnectCookie = async (e) => {
+    e.preventDefault();
+    if (!connectCookieVal.trim()) {
+      setConnectError('Cookie value is required.');
+      return;
+    }
+    setConnectStatus('loading');
+    setConnectError('');
+    try {
+      const data = await connectCookie({ li_at: connectCookieVal });
+      if (data.status === 'success') {
+        setConnectStatus('success');
+        checkConnectionStatus();
+      } else {
+        setConnectStatus('error');
+        setConnectError(data.message || 'Connecting with cookie failed.');
+      }
+    } catch (err) {
+      setConnectStatus('error');
+      setConnectError('Failed to send cookie to server.');
+    }
+  };
 
   const handleStartScanning = async () => {
     if (!keyword.trim()) { return alert("Please type a keyword!"); }
@@ -256,7 +340,7 @@ export default function Dashboard() {
             <h4 style={{ fontWeight: 600, color: '#b45309', margin: '0 0 4px 0', fontSize: '16px' }}>⚠️ LinkedIn Authentication Disconnected</h4>
             <p style={{ color: '#d97706', margin: 0, fontSize: '14px' }}>Your browser session file is missing. Click below to reconnect.</p>
           </div>
-          <button onClick={connectAccount} style={{ background: '#d97706', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>🔒 Securely Connect Account</button>
+          <button onClick={() => { setShowConnectModal(true); setConnectStatus('idle'); setConnectError(''); }} style={{ background: '#d97706', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>🔒 Securely Connect Account</button>
         </div>
       )}
 
@@ -283,6 +367,230 @@ export default function Dashboard() {
       />
 
       <LeadsTable filteredLeads={filteredLeads} onRemoveLead={removeLead} mode={mode} refreshLeads={loadLeads} />
+
+      {/* ── CONNECTION MODAL ── */}
+      {showConnectModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '90%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            padding: '30px',
+            position: 'relative',
+            border: '1px solid rgba(226, 232, 240, 0.8)',
+            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          }}>
+            <button
+              onClick={() => setShowConnectModal(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                color: '#94a3b8',
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '22px', fontWeight: '700', color: '#1e293b', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                🔒 Link LinkedIn Account
+              </h3>
+            </div>
+
+            {connectStatus === 'success' ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ width: '64px', height: '64px', background: '#ecfdf5', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 16px auto' }}>
+                  <span style={{ fontSize: '32px', color: '#10b981' }}>✓</span>
+                </div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#065f46', margin: '0 0 8px 0' }}>LinkedIn Connected Successfully!</h4>
+                <p style={{ fontSize: '14px', color: '#047857', margin: '0 0 24px 0' }}>Your session state has been saved securely to MongoDB Atlas.</p>
+                <button
+                  onClick={() => setShowConnectModal(false)}
+                  style={{ background: '#10b981', color: '#ffffff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  Close Window
+                </button>
+              </div>
+            ) : connectStatus === 'challenge' ? (
+              <form onSubmit={handleConnectChallenge} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '16px', fontSize: '14px', color: '#1e40af', lineHeight: '1.5' }}>
+                  🔑 LinkedIn is requesting a 6-digit verification code. Please check your registered email or phone number for the code.
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>6-Digit Verification PIN</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="e.g. 123456"
+                    value={connectCode}
+                    onChange={(e) => setConnectCode(e.target.value.replace(/\D/g, ''))}
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '16px', letterSpacing: '4px', textAlign: 'center', fontWeight: 'bold' }}
+                    required
+                  />
+                </div>
+                {connectError && (
+                  <div style={{ color: '#ef4444', fontSize: '14px', padding: '10px 12px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fee2e2' }}>
+                    {connectError}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  style={{ background: '#1d4ed8', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '15px' }}
+                >
+                  Verify & Finish Connecting
+                </button>
+              </form>
+            ) : (
+              <>
+                <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '24px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setConnectTab('credentials'); setConnectError(''); }}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: connectTab === 'credentials' ? '2px solid #1d4ed8' : 'none',
+                      color: connectTab === 'credentials' ? '#1d4ed8' : '#64748b',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Credentials Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setConnectTab('cookie'); setConnectError(''); }}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: connectTab === 'cookie' ? '2px solid #1d4ed8' : 'none',
+                      color: connectTab === 'cookie' ? '#1d4ed8' : '#64748b',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Direct li_at Cookie
+                  </button>
+                </div>
+
+                {connectTab === 'credentials' ? (
+                  <form onSubmit={handleConnectCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>LinkedIn Email / Username</label>
+                      <input
+                        type="text"
+                        placeholder="email@example.com"
+                        value={connectEmail}
+                        onChange={(e) => setConnectEmail(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                        required
+                        disabled={connectStatus === 'loading'}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>LinkedIn Password</label>
+                      <input
+                        type="password"
+                        placeholder="••••••••••••"
+                        value={connectPassword}
+                        onChange={(e) => setConnectPassword(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                        required
+                        disabled={connectStatus === 'loading'}
+                      />
+                    </div>
+                    {connectError && (
+                      <div style={{ color: '#ef4444', fontSize: '13px', padding: '10px 12px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fee2e2' }}>
+                        {connectError}
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={connectStatus === 'loading'}
+                      style={{
+                        background: '#1d4ed8',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        cursor: connectStatus === 'loading' ? 'not-allowed' : 'pointer',
+                        fontSize: '15px'
+                      }}
+                    >
+                      {connectStatus === 'loading' ? 'Connecting headlessly...' : 'Link Account'}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleConnectCookie} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>LinkedIn 'li_at' Cookie Value</label>
+                      <textarea
+                        rows={4}
+                        placeholder="Paste your AQED... cookie content here"
+                        value={connectCookieVal}
+                        onChange={(e) => setConnectCookieVal(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace' }}
+                        required
+                        disabled={connectStatus === 'loading'}
+                      />
+                      <p style={{ fontSize: '11px', color: '#64748b', margin: '6px 0 0 0', lineHeight: '1.4' }}>
+                        💡 To find this value: Open LinkedIn in your browser -> Press F12 -> Go to Application -> Cookies -> Copy the value of the <b>li_at</b> cookie.
+                      </p>
+                    </div>
+                    {connectError && (
+                      <div style={{ color: '#ef4444', fontSize: '13px', padding: '10px 12px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fee2e2' }}>
+                        {connectError}
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={connectStatus === 'loading'}
+                      style={{
+                        background: '#1d4ed8',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        cursor: connectStatus === 'loading' ? 'not-allowed' : 'pointer',
+                        fontSize: '15px'
+                      }}
+                    >
+                      {connectStatus === 'loading' ? 'Saving Cookie...' : 'Link with Cookie'}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

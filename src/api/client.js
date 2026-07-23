@@ -34,6 +34,21 @@ export async function initializeSession() {
   return res.data;
 }
 
+export async function connectCredentials({ username, password }) {
+  const res = await api.post('/connect-credentials', { username, password });
+  return res.data;
+}
+
+export async function submitChallenge({ code }) {
+  const res = await api.post('/submit-challenge', { code });
+  return res.data;
+}
+
+export async function connectCookie({ li_at }) {
+  const res = await api.post('/connect-cookie', { li_at });
+  return res.data;
+}
+
 export async function logoutAccount() {
   const res = await api.post('/logout-account');
   return res.data;

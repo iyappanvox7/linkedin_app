@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchLeads, checkConnection, deleteLead, logoutAccount, syncScrape, initializeSession } from '../api/client';
+import { fetchLeads, checkConnection, deleteLead, logoutAccount, syncScrape, initializeSession, connectCredentials, submitChallenge, connectCookie } from '../api/client';
 
 export function useLeads() {
   const [leads, setLeads] = useState([]);
@@ -122,5 +122,8 @@ export function useLeads() {
     connectAccount,
     disconnectAccount,
     checkConnectionStatus,
+    connectCredentials,
+    submitChallenge,
+    connectCookie,
   };
 }
