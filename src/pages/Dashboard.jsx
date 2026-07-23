@@ -6,7 +6,7 @@ import ControlStrip from '../components/ControlStrip';
 import LeadsTable from '../components/LeadsTable';
 import UserPreferences from '../components/UserPreferences';
 import CustomKeywordsManager from '../components/CustomKeywordsManager';
-import { checkScrapingStatus, api } from '../api/client';
+import { checkScrapingStatus } from '../api/client';
 import { KEYWORD_LIBRARY } from '../config/constants';
 
 export default function Dashboard() {
@@ -38,9 +38,30 @@ export default function Dashboard() {
   const [showScrapingOverlay, setShowScrapingOverlay] = useState(false);
   const [checkingInterval, setCheckingInterval] = useState(null);
 
+  // ── 1. Check connection on mount and every 60 seconds ──
   useEffect(() => {
     if (user) {
+      // Immediate check on mount
       checkConnectionStatus();
+
+      // Set up periodic check (every 60 seconds)
+      const interval = setInterval(() => {
+        checkConnectionStatus();
+      }, 60000);
+
+      return () => clearInterval(interval);
+    } else {
+      // Clean up interval on logout
+      if (checkingInterval) {
+        clearInterval(checkingInterval);
+        setCheckingInterval(null);
+      }
+    }
+  }, [user, checkConnectionStatus]);
+
+  // ── 2. Background scrape overlay ──
+  useEffect(() => {
+    if (user) {
       checkScrapingStatus().then(data => {
         if (data.running) {
           setShowScrapingOverlay(true);
@@ -60,7 +81,7 @@ export default function Dashboard() {
         setCheckingInterval(null);
       }
     }
-  }, [user, checkConnectionStatus]);
+  }, [user]);
 
   const handleStartScanning = async () => {
     if (!keyword.trim()) { return alert("Please type a keyword!"); }
@@ -70,7 +91,7 @@ export default function Dashboard() {
 
   const handleStopScanning = async () => {
     try {
-      await api.post('/stop-scanning');
+      await fetch('http://127.0.0.1:8000/stop-scanning', { method: 'POST' });
       if (window.activePollingTimerKey) clearInterval(window.activePollingTimerKey);
       if (window.activeBatchPollingTimerKey) {
         clearInterval(window.activeBatchPollingTimerKey);
@@ -114,7 +135,7 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
-  // ✅ FIXED: Convert fields to strings before using .toLowerCase()
+  // ── Safe string filter ──
   const filteredLeads = useMemo(() => {
     let filtered = leads.filter(lead => {
       const role = String(lead.role_or_project || '');
@@ -142,7 +163,7 @@ export default function Dashboard() {
     }
   };
 
-  // 🟢 Full-page loading spinner
+  // ── Loading spinner ──
   if (initialLoading) {
     return (
       <div style={{
@@ -228,6 +249,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ── LinkedIn Connection Banner ── */}
       {!isConnected && (
         <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', padding: '16px 20px', borderRadius: '12px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
