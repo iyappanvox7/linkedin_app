@@ -23,7 +23,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    await api.post('/auth/login', { email, password });
+    const res = await api.post('/auth/login', { email, password });
+    if (res.data && res.data.access_token) {
+      localStorage.setItem('token', res.data.access_token);
+    }
     // Short delay to allow the cookie to be set, then fetch user
     await new Promise(resolve => setTimeout(resolve, 300));
     await checkAuth();
@@ -31,6 +34,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     await api.post('/auth/logout');
+    localStorage.removeItem('token');
     setUser(null);
   };
 

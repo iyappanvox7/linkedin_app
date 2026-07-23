@@ -6,6 +6,14 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export async function generateKeywords(goal) {
   const res = await api.post('/generate-keywords', { goal });
   return res.data;
@@ -61,8 +69,8 @@ export async function getUserPreferences() {
   return res.data;
 }
 
-export async function updateUserPreferences({ category, keyword, limit }) {
-  const params = new URLSearchParams({ category, keyword, limit });
+export async function updateUserPreferences({ category, keyword }) {
+  const params = new URLSearchParams({ category, keyword });
   const res = await api.post(`/user-preferences?${params.toString()}`);
   return res.data;
 }
